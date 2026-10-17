@@ -1,0 +1,69 @@
+name: ci-preview (paste-text verification, not part of PR)
+
+on:
+  push:
+    branches: [ci-preview]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: gofmt
+        continue-on-error: true
+        run: |
+          out=$(gofmt -l . | grep -v '^ci/' || true)
+          if [ -n "$out" ]; then echo "needs gofmt:"; echo "$out"; gofmt -d $out; exit 1; fi
+
+      - name: go vet
+        continue-on-error: true
+        run: go vet ./...
+
+      - name: unit tests
+        continue-on-error: true
+        run: set -o pipefail; go test -count=1 -v ./... 2>&1 | tee test-output.txt
+
+      - name: fuzz sanitizer (2 min)
+        continue-on-error: true
+        run: set -o pipefail; go test -run '^$' -fuzz FuzzSanitizeHTML -fuzztime 120s . 2>&1 | tail -20 | tee -a test-output.txt
+
+      - name: library sample logs
+        run: git clone --depth 1 --branch v1.15.1 https://github.com/Nirzak/logchecker-go /tmp/lcgo
+
+      - name: sanitizer round-trip on every library sample log
+        continue-on-error: true
+        run: |
+          cp ci/ci_harness_test.go .
+          set -o pipefail; LOGS_DIR=/tmp/lcgo/tests/logs go test -count=1 -tags harness -run TestLibraryMarkupSurvivesSanitizer -v . 2>&1 | tee -a test-output.txt
+          rm ci_harness_test.go
+
+      - name: build and start server
+        run: |
+          go build -o logchecker-web .
+          LOG_LEVEL=info RATE_LIMIT_RPS=100 RATE_LIMIT_BURST=1000 ./logchecker-web > server.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:5050/ >/dev/null && break; sleep 1; done
+
+      - name: playwright
+        run: |
+          pip install playwright==1.47.0 charset-normalizer==3.3.2
+          python -m playwright install --with-deps chromium
+
+      - name: end-to-end + screenshots
+        run: python ci/e2e.py http://127.0.0.1:5050 /tmp/lcgo/tests/logs shots
+
+      - name: upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview
+          path: |
+            shots/
+            test-output.txt
+            server.log
