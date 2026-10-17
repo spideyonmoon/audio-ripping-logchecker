@@ -450,7 +450,7 @@ func cleanPastedText(s string) (string, bool) {
 	if !utf8.ValidString(s) {
 		return "", false
 	}
-	s = strings.TrimPrefix(s, "﻿")
+	s = strings.TrimPrefix(s, "\uFEFF")
 	return strings.Map(func(r rune) rune {
 		switch {
 		case r == '\t' || r == '\n' || r == '\r':

@@ -54,10 +54,10 @@ func TestSanitizeHTMLEscapesEverythingElse(t *testing.T) {
 
 func TestSanitizeHTMLBalancesTags(t *testing.T) {
 	cases := []struct{ in, want string }{
-		{`</span>x`, `x`},                                                  // stray close dropped
-		{`<span class="good">x`, `<span class="good">x</span>`},            // left open
-		{`<div><span>x</div>y`, `<div><span>x</span></div>y`},              // misnested
-		{`<strong>a</span>b</strong>`, `<strong>ab</strong>`},              // close of a tag never opened
+		{`</span>x`, `x`}, // stray close dropped
+		{`<span class="good">x`, `<span class="good">x</span>`}, // left open
+		{`<div><span>x</div>y`, `<div><span>x</span></div>y`},   // misnested
+		{`<strong>a</span>b</strong>`, `<strong>ab</strong>`},   // close of a tag never opened
 		{`<span><span class="bad">a</span></span>`, `<span><span class="bad">a</span></span>`},
 	}
 	for _, c := range cases {

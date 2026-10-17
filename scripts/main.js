@@ -111,7 +111,7 @@ document.addEventListener("DOMContentLoaded", function() {
       const lines = text.split(/\r\n|\r|\n/).length;
       over = bytes > MAX_LOG_BYTES;
       pasteCount.textContent = lines.toLocaleString() + (lines === 1 ? " line" : " lines") +
-        " • " + formatKB(bytes) + " / 200 KB" + (over ? " — too large" : "");
+        " \u2022 " + formatKB(bytes) + " / 200 KB" + (over ? " \u2014 too large" : "");
     }
     pasteZone.classList.toggle("over", over);
     pasteClear.hidden = text === "";

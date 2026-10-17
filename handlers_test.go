@@ -165,9 +165,9 @@ func TestReadLogInput(t *testing.T) {
 func TestCleanPastedText(t *testing.T) {
 	cases := []struct{ in, want string }{
 		{"line 1\r\nline 2\n\tx", "line 1\r\nline 2\n\tx"},
-		{"﻿Exact Audio Copy", "Exact Audio Copy"},
+		{"\uFEFFExact Audio Copy", "Exact Audio Copy"},
 		{"a\x00b\x07c\x1bd\x7fe\u0085f", "abcdef"},
-		{"Track ‮A‬ ⁦B⁩ ‏C", "Track A B C"},
+		{"Track \u202EA\u202C \u2066B\u2069 \u200FC", "Track A B C"},
 		{"日本語 Ñandú — ok", "日本語 Ñandú — ok"},
 	}
 	for _, c := range cases {
