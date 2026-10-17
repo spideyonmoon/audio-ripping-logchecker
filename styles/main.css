@@ -525,7 +525,7 @@ body {
 .paste-input {
   flex: 1;
   width: 100%;
-  min-height: 228px;
+  min-height: 210px; /* + meta row = drop zone height, so switching tabs doesn't jump */
   max-height: 60vh;
   padding: 12px 14px;
   font-family: var(--font-mono);

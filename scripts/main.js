@@ -96,7 +96,8 @@ document.addEventListener("DOMContentLoaded", function() {
     return new TextEncoder().encode(text.replace(/\r?\n/g, "\r\n")).length;
   }
 
-  function formatKB(bytes) {
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + " B";
     const kb = bytes / 1024;
     return (kb < 10 ? kb.toFixed(1) : Math.round(kb)) + " KB";
   }
@@ -111,7 +112,7 @@ document.addEventListener("DOMContentLoaded", function() {
       const lines = text.split(/\r\n|\r|\n/).length;
       over = bytes > MAX_LOG_BYTES;
       pasteCount.textContent = lines.toLocaleString() + (lines === 1 ? " line" : " lines") +
-        " \u2022 " + formatKB(bytes) + " / 200 KB" + (over ? " \u2014 too large" : "");
+        " \u2022 " + formatSize(bytes) + " / 200 KB" + (over ? " \u2014 too large" : "");
     }
     pasteZone.classList.toggle("over", over);
     pasteClear.hidden = text === "";

@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf16"
 	"unicode/utf8"
 
 	"golang.org/x/time/rate"
@@ -436,7 +437,7 @@ func (s *server) readLogText(text, ip string) (logInput, string) {
 		s.logger.Warn("rejected pasted text with invalid UTF-8", "ip", ip)
 		return logInput{}, "The pasted text is not valid UTF-8."
 	}
-	return logInput{raw: []byte(clean), ext: ".log", name: pastedName}, ""
+	return logInput{raw: nativeLogBytes(clean), ext: ".log", name: pastedName}, ""
 }
 
 // cleanPastedText validates and normalises text from the paste box.
@@ -462,6 +463,31 @@ func cleanPastedText(s string) (string, bool) {
 		}
 		return r
 	}, s), true
+}
+
+// nativeLogBytes encodes pasted text the way the ripper writes its log files.
+// The checksum validators read the analyzer's temp file back from disk, so it
+// must hold the same bytes the original file would:
+//   - EAC logs are UTF-16LE (the EAC checker always decodes the file as such);
+//     its checksum ignores line breaks.
+//   - XLD and whipper logs are UTF-8 with LF line breaks, and both checksums
+//     cover the line breaks, so the CRLFs a browser submits are undone.
+//
+// Anything else is passed through as UTF-8.
+func nativeLogBytes(text string) []byte {
+	switch {
+	case strings.Contains(text, "Exact Audio Copy"):
+		units := utf16.Encode([]rune(text))
+		b := make([]byte, 0, 2+2*len(units))
+		b = append(b, 0xff, 0xfe) // UTF-16 LE BOM
+		for _, u := range units {
+			b = append(b, byte(u), byte(u>>8))
+		}
+		return b
+	case strings.Contains(text, "X Lossless Decoder"), strings.Contains(text, "Log created by: whipper"):
+		return []byte(strings.ReplaceAll(text, "\r\n", "\n"))
+	}
+	return []byte(text)
 }
 
 // isBidiControl reports whether r is a Unicode bidirectional formatting

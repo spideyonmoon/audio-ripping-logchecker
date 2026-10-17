@@ -48,17 +48,17 @@ func TestReadLogInput(t *testing.T) {
 		req      func(t *testing.T) *http.Request
 		wantErr  string // substring; "" means success
 		wantName string
-		wantRaw  string
+		wantText string
 	}{
 		{
 			name:     "file",
 			req:      func(t *testing.T) *http.Request { return multipartRequest(t, "/", "rip.log", []byte(sampleLog), nil) },
-			wantName: "rip.log", wantRaw: sampleLog,
+			wantName: "rip.log", wantText: sampleLog,
 		},
 		{
 			name:     "text",
 			req:      func(t *testing.T) *http.Request { return multipartRequest(t, "/", "", nil, strPtr(sampleLog)) },
-			wantName: pastedName, wantRaw: sampleLog,
+			wantName: pastedName, wantText: sampleLog,
 		},
 		{
 			name: "text, urlencoded",
@@ -67,7 +67,7 @@ func TestReadLogInput(t *testing.T) {
 				r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 				return r
 			},
-			wantName: pastedName, wantRaw: sampleLog,
+			wantName: pastedName, wantText: sampleLog,
 		},
 		{
 			name: "text only in query string is ignored",
@@ -155,8 +155,8 @@ func TestReadLogInput(t *testing.T) {
 			if errMsg != "" {
 				t.Fatalf("unexpected error %q", errMsg)
 			}
-			if in.name != c.wantName || string(in.raw) != c.wantRaw || in.ext != ".log" {
-				t.Fatalf("got name=%q ext=%q raw=%q", in.name, in.ext, in.raw)
+			if in.name != c.wantName || in.text != c.wantText || in.ext != ".log" {
+				t.Fatalf("got name=%q ext=%q text=%q", in.name, in.ext, in.text)
 			}
 		})
 	}
@@ -178,6 +178,25 @@ func TestCleanPastedText(t *testing.T) {
 	}
 	if _, ok := cleanPastedText("bad \xc3\x28"); ok {
 		t.Error("cleanPastedText accepted invalid UTF-8")
+	}
+}
+
+func TestNativeLogBytes(t *testing.T) {
+	eac := "Exact Audio Copy V1.6\r\nAlbum : Ñandú 日本\r\n"
+	if got := nativeLogBytes(eac); !bytes.Equal(got[:2], []byte{0xff, 0xfe}) || decodeToUTF8(got) != eac {
+		t.Errorf("EAC: want UTF-16LE with BOM round-tripping to the input, got % x", got[:8])
+	}
+	xld := "X Lossless Decoder version 20230627\r\nline\r\n"
+	if got := string(nativeLogBytes(xld)); got != "X Lossless Decoder version 20230627\nline\n" {
+		t.Errorf("XLD: got %q, want LF line breaks", got)
+	}
+	whipper := "Log created by: whipper 0.10.0\r\nx\r\n"
+	if got := string(nativeLogBytes(whipper)); got != "Log created by: whipper 0.10.0\nx\n" {
+		t.Errorf("whipper: got %q, want LF line breaks", got)
+	}
+	other := "dBpoweramp Release 17.1\r\n"
+	if got := string(nativeLogBytes(other)); got != other {
+		t.Errorf("other: got %q, want unchanged", got)
 	}
 }
 

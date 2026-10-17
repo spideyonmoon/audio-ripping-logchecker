@@ -44,6 +44,8 @@ func TestSanitizeHTMLEscapesEverythingElse(t *testing.T) {
 		{`&lt;script&gt;`, `&amp;lt;script&amp;gt;`},
 		{`a > b & c < d`, `a &gt; b &amp; c &lt; d`},
 		{`<!-- x --><style>`, `&lt;!-- x --&gt;&lt;style&gt;`},
+		// Real XLD filenames (logchecker-go sample angle_bracket.log).
+		{`<span class="log3">03 - Signe <記号>.flac</span>`, `<span class="log3">03 - Signe &lt;記号&gt;.flac</span>`},
 	}
 	for _, c := range cases {
 		if got := sanitizeHTML(c.in); got != c.want {
@@ -118,6 +120,7 @@ func TestContainsMarkup(t *testing.T) {
 		"Exact Audio Copy V1.6 from 23. October 2020",
 		"Track 01 <3 love song.flac",
 		"<pre>", "<spanner>", "a < b > c", "<ab>", "C:\\Music\\<Various>",
+		"Filename : /konwersja/03 - Signe <記号>.flac",
 	}
 	for _, s := range yes {
 		if !containsMarkup(s) {
